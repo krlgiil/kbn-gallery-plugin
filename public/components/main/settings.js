@@ -2,33 +2,27 @@ import React from "react";
 import {
   EuiForm,
   EuiFormRow,
-  EuiFieldText,
-  EuiSelect,
   EuiButton,
   EuiFlexGroup,
   EuiFlexItem
 } from "@elastic/eui";
+import Constants from '../../constants';
+import { Fields } from '../config/fields';
+import { Indices } from '../config/indices';
+import { Preview } from '../config/preview';
 
 export class Settings extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      indices: this.props.indices
+      indices: this.props.indices,
+      indexValue: Constants.index,
+      prefixValue: Constants.prefix,
+      imageField: Constants.imgField,
+      captionField: Constants.captionField,
     }
   }
 
-  componentDidMount() {
-    const { httpClient } = this.props;
-
-    httpClient.get("../api/shop_preview/indices").then((resp) => {
-      const indices = this.getOptions(resp.data.indices);
-      this.setState({ indices });
-    });
-  }
-
-  getOptions(indices) {
-    return _.map(indices, ind => ({ value: ind, text: ind }));
-  }
   onChange = e => {
     this.setState({
       indexValue: e.target.value,
@@ -36,10 +30,20 @@ export class Settings extends React.Component {
     console.log('index changed. ');
   };
 
-  onFieldChange = e => {
+  onImageFieldChange = e => {
     this.setState({
-      fieldValue: e.target.value,
-    }, () => this.updatePreview());
+      imageField: e.target.value,
+    }, () => {
+      console.log(this.state);
+      return this.updatePreview();
+    });
+    console.log('field changed.');
+  };
+
+  onCaptionFieldChange = e => {
+    this.setState({
+      captionField: e.target.value,
+    });
     console.log('field changed.');
   };
 
@@ -59,109 +63,71 @@ export class Settings extends React.Component {
     });
   }
 
+  /**
+   * Update the preview of the image URL value
+   */
   updatePreview() {
     const { httpClient } = this.props;
-    const { indexValue, fieldValue } = this.state;
-    httpClient.get(`../api/shop_preview/${indexValue}/${fieldValue}/preview`).then((resp) => {
+    const { indexValue, imageField } = this.state;
+    httpClient.get(`../api/shop_preview/${indexValue}/${imageField}/preview`).then((resp) => {
       const preview = resp.data.preview;
       this.setState({ refUrl: preview, preview });
     });
   }
 
+  /**
+   * Update the prefix of the image URL
+   */
   updatePrefix() {
     const { prefixValue } = this.state;
     const preview = prefixValue + this.state.refUrl;
     this.setState({ preview });
   }
 
+  /**
+   * Set the images to display in the gallery
+   */
   loadGallery() {
     const { httpClient, setImages } = this.props;
-    const { indexValue, fieldValue, prefixValue } = this.state;
-    httpClient.get(`../api/shop_preview/${indexValue}/${fieldValue}/search`).then((resp) => {
+    const { indexValue, imageField, prefixValue = '' } = this.state;
+    httpClient.get(`../api/shop_preview/${indexValue}/${imageField}/search`).then((resp) => {
       let images = resp.data.images;
       if (prefixValue) {
-        images = _.map(resp.data.images, (img) => {
-          return Object.assign(img, { imgUrl: `${prefixValue}${img.imgUrl}` });
-        });
+        images = this.updatePrefix(resp.data.images, prefixValue);
       }
       setImages(images);
     });
   }
+
+  updatePrefix(images, prefix) {
+    return _.map(images, (img) => Object.assign(img, { imgUrl: `${prefix}${img.imgUrl}` }));
+  }
+
   render() {
     return (
       <EuiForm>
-        <EuiFlexGroup>
+        <EuiFlexGroup style={{ maxWidth: 600 }}>
           <EuiFlexItem>
-            <EuiFormRow>
-              <EuiFlexGroup>
-                <EuiFlexItem>
-                  <EuiFormRow
-                    label="Indices"
-                    helpText="Select your index to display."
-                    fullWidth
-                  >
-                    <EuiSelect
-                      options={this.state.indices}
-                      value={this.state.indexValue}
-                      onChange={this.onChange}
-                      fullWidth
-                      aria-label="Use aria labels when no actual label is in use"
-                    />
-                  </EuiFormRow>
-                </EuiFlexItem>
-
-                <EuiFlexItem>
-                  <EuiFormRow
-                    label="Fields"
-                    helpText="Select the image field."
-                    fullWidth
-                  >
-                    <EuiSelect
-                      options={this.state.fields}
-                      value={this.state.fieldValue}
-                      onChange={this.onFieldChange}
-                      fullWidth
-                      aria-label="Use aria labels when no actual label is in use"
-                    />
-                  </EuiFormRow>
-                </EuiFlexItem>
-              </EuiFlexGroup>
-            </EuiFormRow>
-
-            <EuiFormRow>
-              <EuiFlexGroup>
-                <EuiFlexItem>
-                  <EuiFormRow
-                    label="Prefix"
-                    helpText="URL prefix of the images."
-                  >
-                    <EuiFieldText
-                      name="prefix"
-                      onChange={this.onPrefixChange}
-                    />
-                  </EuiFormRow>
-                </EuiFlexItem>
-                <EuiFlexItem>
-                  <EuiFormRow
-                    label="Preview"
-                    fullWidth
-                  >
-                    <EuiFieldText
-                      placeholder="http://example.com/images/0001.png"
-                      value={this.state.preview}
-                      readOnly
-                      fullWidth
-                    />
-                  </EuiFormRow>
-                </EuiFlexItem>
-              </EuiFlexGroup>
-            </EuiFormRow>
-
+            <Indices httpClient={this.props.httpClient}
+              indexValue={this.state.indexValue}
+              onChange={this.onChange} />
+            <Fields httpClient={this.props.httpClient}
+              fields={this.state.fields}
+              indexValue={this.state.indexValue}
+              imageField={this.state.imageField}
+              onImageFieldChange={this.onImageFieldChange}
+              captionField={this.state.captionField}
+              onCaptionFieldChange={this.onCaptionFieldChange} />
+            <Preview httpClient={this.props.httpClient}
+              indexValue={this.state.indexValue}
+              imageField={this.state.imageField}
+              preview={this.state.preview}
+              onPrefixChange={this.onPrefixChange} />
             <EuiFormRow>
               <EuiButton
                 onClick={() => this.loadGallery()}
               >
-                Save
+                Display
               </EuiButton>
             </EuiFormRow>
           </EuiFlexItem>

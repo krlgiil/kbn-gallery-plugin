@@ -2,7 +2,6 @@ import React from "react";
 import {
   EuiFlexItem,
   EuiImage,
-  EuiCard
 } from "@elastic/eui";
 
 export class Image extends React.Component {
@@ -14,12 +13,12 @@ export class Image extends React.Component {
     const { img } = this.props;
 
     return (
-      <EuiFlexItem>
+      <EuiFlexItem grow={false}>
         <EuiImage
           size="m"
           hasShadow
-          caption=""
-          alt=""
+          caption={img.caption}
+          alt={img.caption}
           allowFullScreen
           url={img.imgUrl}
         />

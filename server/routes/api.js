@@ -26,7 +26,7 @@ export default function (server) {
         index: req.params.index,
       }).then(response => {
         const mappings = response[req.params.index].mappings;
-        console.log(mappings);
+        // console.log(mappings);
         const { properties } = mappings[Object.keys(mappings)[0]];
 
         reply({ fields: Object.keys(properties) });
@@ -34,19 +34,30 @@ export default function (server) {
     }
   });
 
+  /**
+   * Search documents on the provided index
+   */
   server.route({
     path: '/api/shop_preview/{index}/{imgField}/search',
     method: 'GET',
     handler(req, reply) {
+      const { index, imgField } = req.params;
       callWithRequest(req, 'search', {
-        index: req.params.index,
-        _source: req.params.imgField
+        index,
+        _source: [imgField, 'name'],
+        size: 20
       }).then(response => {
         const res = response.hits.hits;
         const images = _.map(res, doc => {
+          let imgUrl = doc._source[imgField];
+          if (typeof imgUrl === 'object') {
+            imgUrl = doc._source[imgField][0];
+          }
+
           return {
             id: doc._id,
-            imgUrl: doc._source[req.params.imgField]
+            imgUrl,
+            caption: doc._source['name'] || ''
           };
         });
         reply({ images });
@@ -64,8 +75,8 @@ export default function (server) {
         size: 1
       }).then(response => {
         const res = response.hits.hits;
-        console.log(res[0]._source);
-        const preview = _.map(res, doc => doc._source[req.params.imgField]);
+        const preview = res[0]._source[req.params.imgField][0];
+        console.log(preview);
         reply({ preview });
       });
     }

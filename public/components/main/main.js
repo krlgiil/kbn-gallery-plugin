@@ -9,7 +9,10 @@ import {
   EuiPageContentBody,
   EuiSpacer,
   EuiFlexGroup,
-  EuiFlexItem
+  EuiFlexGrid,
+  EuiPopover,
+  EuiButton,
+  EuiCallOut
 } from "@elastic/eui";
 import { Image } from "./image";
 import { Settings } from "./settings";
@@ -17,15 +20,47 @@ import { Settings } from "./settings";
 export class Main extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {
+      isPopoverOpen: false,
+    };
   }
 
   setImages(images) {
     this.setState({ images });
   }
 
+  onButtonClick = () => {
+    this.setState({
+      isPopoverOpen: !this.state.isPopoverOpen,
+    });
+  }
+
+  closePopover = () => {
+    this.setState({
+      isPopoverOpen: false,
+    });
+  }
+
   render() {
     const { title, httpClient } = this.props;
+
+    const button = (
+      <EuiButton
+        iconSide="right"
+        fill
+        iconType="arrowDown"
+        onClick={this.onButtonClick}
+      >
+        Settings
+      </EuiButton>
+    );
+
+    const settings = (
+      <Settings
+        httpClient={httpClient}
+        setImages={this.setImages.bind(this)}
+      />
+    );
 
     return (
       <EuiPage>
@@ -37,33 +72,46 @@ export class Main extends React.Component {
         <EuiPageBody>
           <EuiPageContent>
             <EuiPageContentHeader>
-              <EuiTitle>
-                <h2>Configuration</h2>
-              </EuiTitle>
+              <EuiPopover
+                id="formPopover"
+                ownFocus
+                button={button}
+                isOpen={this.state.isPopoverOpen}
+                closePopover={this.closePopover.bind(this)}
+              >
+                <div style={{ width: '420px' }}>
+                  {settings}
+                </div>
+              </EuiPopover>
             </EuiPageContentHeader>
-            <EuiPageContentBody>
-              <Settings
-                httpClient={httpClient}
-                setImages={this.setImages.bind(this)}
-              />
-              <EuiSpacer size="m" />
+            <EuiPageContentHeader>
               <EuiTitle>
                 <h2>Gallery</h2>
               </EuiTitle>
-              <EuiFlexGroup
-                justifyContent="spaceBetween"
-                alignItems="flexEnd"
-                responsive={true}
-                wrap={true}
-              >
-                {!_.isEmpty(this.state.images) ? _.map(this.state.images, img => {
-                  return (
-                    <EuiFlexItem key={img.id} grow={false}>
-                      <Image img={img} />
-                    </EuiFlexItem>
-                  );
-                }) : 'No images.'}
-              </EuiFlexGroup>
+            </EuiPageContentHeader>
+            <EuiSpacer size="m" />
+            <EuiPageContentBody>
+              {
+                _.isEmpty(this.state.images) ?
+                  <EuiCallOut
+                    title="No images to display."
+                    iconType="faceSad"
+                  /> :
+                  <EuiFlexGroup
+                    justifyContent="spaceBetween"
+                    alignItems="flexEnd"
+                    responsive={true}
+                    wrap={true}
+                  >
+                    <EuiFlexGrid columns={4}>
+                      {_.map(this.state.images, img => {
+                        return (
+                          <Image key={img.id} img={img} />
+                        );
+                      })}
+                    </EuiFlexGrid>
+                  </EuiFlexGroup>
+              }
             </EuiPageContentBody>
           </EuiPageContent>
         </EuiPageBody>
